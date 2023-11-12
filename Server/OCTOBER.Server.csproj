@@ -15,6 +15,9 @@
     <ProjectReference Include="..\Client\OCTOBER.Client.csproj" />
     <ProjectReference Include="..\OCTOBER.EF\OCTOBER.EF.csproj" />
     <ProjectReference Include="..\Shared\OCTOBER.Shared.csproj" />
+    <ProjectReference Include="..\october.EF\october.EF.csproj">
+      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
