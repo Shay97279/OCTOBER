@@ -8,6 +8,7 @@ namespace OCTOBER.EF.Data
 {
     public partial class OCTOBEROracleContext : DbContext
     {
+    
         public OCTOBEROracleContext()
         {
         }
