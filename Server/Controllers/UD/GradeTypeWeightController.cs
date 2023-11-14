@@ -15,6 +15,7 @@ using Microsoft.CodeAnalysis;
 using AutoMapper;
 using OCTOBER.Server.Controllers.Base;
 using OCTOBER.Shared.DTO;
+using static System.Collections.Specialized.BitVector32;
 using System;
 using System.Threading.Tasks;
 
@@ -23,29 +24,32 @@ namespace OCTOBER.Server.Controllers.UD
     [Route("api/[controller]")]
     [ApiController]
 
-    public class SectionController : BaseController, GenericRestController<SectionDTO>
+    public class GradeTypeWeightController : BaseController, GenericRestController<GradeTypeWeightDTO>
     {
-        public SectionController(OCTOBEROracleContext context,
-                                IHttpContextAccessor httpContextAccessor,
-                                IMemoryCache memoryCache)
-                : base(context, httpContextAccessor)
+        public GradeTypeWeightController(OCTOBEROracleContext context,
+                        IHttpContextAccessor httpContextAccessor,
+                        IMemoryCache memoryCache)
+        : base(context, httpContextAccessor)
         {
         }
 
         [HttpDelete]
-        [Route("Delete/{SectionId}")]
+        [Route("Delete/{SchoolId}/{SectionId}/{GradeTypeCode}")]
 
-        public async Task<IActionResult> Delete(int SectionId)
+        public async Task<IActionResult> Delete(int SchoolId, int SectionId, string GradeTypeCode)
         {
             try
             {
                 await _context.Database.BeginTransactionAsync();
 
-                var itm = await _context.Sections.Where(x => x.SectionId == SectionId).FirstOrDefaultAsync();
+                var itm = await _context.GradeTypeWeights.Where(x => x.SchoolId == SchoolId)
+                    .Where(x => x.SectionId == SectionId)
+                    .Where(x => x.GradeTypeCode.Equals(GradeTypeCode)).FirstOrDefaultAsync();
+
 
                 if (itm != null)
                 {
-                    _context.Sections.Remove(itm);
+                    _context.GradeTypeWeights.Remove(itm);
                 }
                 await _context.SaveChangesAsync();
                 await _context.Database.CommitTransactionAsync();
@@ -60,7 +64,6 @@ namespace OCTOBER.Server.Controllers.UD
             }
         }
 
-
         [HttpGet]
         [Route("Get")]
 
@@ -70,20 +73,18 @@ namespace OCTOBER.Server.Controllers.UD
             {
                 await _context.Database.BeginTransactionAsync();
 
-                var result = await _context.Sections.Select(sp => new SectionDTO
+                var result = await _context.GradeTypeWeights.Select(sp => new GradeTypeWeightDTO
                 {
+                    SchoolId = sp.SchoolId,
                     SectionId = sp.SectionId,
-                    CourseNo = sp.CourseNo,
-                    SectionNo = sp.SectionNo,
-                    InstructorId = sp.InstructorId,
-                    Capacity = sp.Capacity,
-                    Location = sp.Location,
-                    StartDateTime = sp.StartDateTime,
+                    GradeTypeCode = sp.GradeTypeCode,
+                    NumberPerSection = sp.NumberPerSection,
+                    PercentOfFinalGrade = sp.PercentOfFinalGrade,
+                    DropLowest = sp.DropLowest,
                     CreatedBy = sp.CreatedBy,
                     CreatedDate = sp.CreatedDate,
                     ModifiedBy = sp.ModifiedBy,
                     ModifiedDate = sp.ModifiedDate,
-                    SchoolId = sp.SchoolId,
                 })
                 .ToListAsync();
                 await _context.Database.RollbackTransactionAsync();
@@ -98,33 +99,33 @@ namespace OCTOBER.Server.Controllers.UD
         }
 
         [HttpGet]
-        [Route("Get/{SchoolID}/{SectionId}")]
+        [Route("Get/{SchoolId}/{SectionId}/{GradeTypeCode}")]
 
-        public async Task<IActionResult> Get(int SchoolID, int SectionId)
+        public async Task<IActionResult> Get(int SchoolId, int SectionId, string GradeTypeCode)
         {
             try
             {
                 await _context.Database.BeginTransactionAsync();
 
-                SectionDTO? result = await _context.Sections
+                GradeTypeWeightDTO? result = await _context
+                    .GradeTypeWeights.Where(x => x.SchoolId == SchoolId)
                     .Where(x => x.SectionId == SectionId)
-                    .Where(x => x.SchoolId == SchoolID)
-                    .Select(sp => new SectionDTO
-                    {
-                        SectionId = sp.SectionId,
-                        CourseNo = sp.CourseNo,
-                        SectionNo = sp.SectionNo,
-                        InstructorId = sp.InstructorId,
-                        Capacity = sp.Capacity,
-                        Location = sp.Location,
-                        StartDateTime = sp.StartDateTime,
-                        CreatedBy = sp.CreatedBy,
-                        CreatedDate = sp.CreatedDate,
-                        ModifiedBy = sp.ModifiedBy,
-                        ModifiedDate = sp.ModifiedDate,
-                        SchoolId = sp.SchoolId,
-                    })
-                .SingleAsync();
+                    .Where(x => x.GradeTypeCode.Equals(GradeTypeCode))
+                     .Select(sp => new GradeTypeWeightDTO
+                     {
+                         SchoolId = sp.SchoolId,
+                         SectionId = sp.SectionId,
+                         GradeTypeCode = sp.GradeTypeCode,
+                         NumberPerSection = sp.NumberPerSection,
+                         PercentOfFinalGrade = sp.PercentOfFinalGrade,
+                         DropLowest = sp.DropLowest,
+                         CreatedBy = sp.CreatedBy,
+                         CreatedDate = sp.CreatedDate,
+                         ModifiedBy = sp.ModifiedBy,
+                         ModifiedDate = sp.ModifiedDate,
+                     })
+                .SingleOrDefaultAsync();
+
                 await _context.Database.RollbackTransactionAsync();
                 return Ok(result);
             }
@@ -135,39 +136,34 @@ namespace OCTOBER.Server.Controllers.UD
                 return StatusCode(StatusCodes.Status417ExpectationFailed, "An Error has occurred");
             }
         }
-        //Implemented the version up, with 2 parameters
-        public Task<IActionResult> Get(int KeyVal)
-        {
-            throw new NotImplementedException();
-        }
 
         [HttpPost]
         [Route("Post")]
 
-        public async Task<IActionResult> Post([FromBody] SectionDTO _SectionDTO)
+        public async Task<IActionResult> Post([FromBody] GradeTypeWeightDTO _GradeTypeWeightDTO)
         {
             try
             {
                 await _context.Database.BeginTransactionAsync();
 
-                var itm = await _context.Sections.Where(x => x.SectionId == _SectionDTO.SectionId)
-                    .Where(x => x.SchoolId == _SectionDTO.SchoolId)
+                var itm = await _context.GradeTypeWeights
+                    .Where(x => x.SchoolId == _GradeTypeWeightDTO.SchoolId)
+                    .Where(x => x.SectionId == _GradeTypeWeightDTO.SectionId)
+                    .Where(x => x.GradeTypeCode.Equals(_GradeTypeWeightDTO.GradeTypeCode))
                     .FirstOrDefaultAsync();
 
                 if (itm == null)
                 {
-                    Section s = new Section
+                    GradeTypeWeight g = new GradeTypeWeight
                     {
-                        //SchoolId = _SectionDTO.SchoolId,
-                        SectionId = _SectionDTO.SectionId,
-                        CourseNo = _SectionDTO.CourseNo,
-                        SectionNo = _SectionDTO.SectionNo,
-                        InstructorId = _SectionDTO.InstructorId,
-                        Capacity = _SectionDTO.Capacity,
-                        Location = _SectionDTO.Location,
-                        StartDateTime = _SectionDTO.StartDateTime,
+                        SchoolId = _GradeTypeWeightDTO.SchoolId,
+                        SectionId = _GradeTypeWeightDTO.SectionId,
+                        GradeTypeCode = _GradeTypeWeightDTO.GradeTypeCode,
+                        NumberPerSection = _GradeTypeWeightDTO.NumberPerSection,
+                        PercentOfFinalGrade = _GradeTypeWeightDTO.PercentOfFinalGrade,
+                        DropLowest = _GradeTypeWeightDTO.DropLowest,
                     };
-                    _context.Sections.Add(s);
+                    _context.GradeTypeWeights.Add(g);
                     await _context.SaveChangesAsync();
                     await _context.Database.CommitTransactionAsync();
                 }
@@ -184,25 +180,26 @@ namespace OCTOBER.Server.Controllers.UD
         [HttpPut]
         [Route("Put")]
 
-        public async Task<IActionResult> Put([FromBody] SectionDTO _SectionDTO)
+        public async Task<IActionResult> Put([FromBody] GradeTypeWeightDTO _GradeTypeWeightDTO)
         {
             try
             {
                 await _context.Database.BeginTransactionAsync();
 
-                var itm = await _context.Sections.Where(x => x.SectionId == _SectionDTO.SectionId)
-                    .Where(x => x.SchoolId == _SectionDTO.SchoolId)
+                var itm = await _context.GradeTypeWeights
+                    .Where(x => x.SchoolId == _GradeTypeWeightDTO.SchoolId)
+                    .Where(x => x.SectionId == _GradeTypeWeightDTO.SectionId)
+                    .Where(x => x.GradeTypeCode.Equals(_GradeTypeWeightDTO.GradeTypeCode))
                     .FirstOrDefaultAsync();
 
-                itm.SchoolId = _SectionDTO.SchoolId;
-                itm.CourseNo = _SectionDTO.CourseNo;
-                itm.SectionNo = _SectionDTO.SectionNo;
-                itm.InstructorId = _SectionDTO.InstructorId;
-                itm.Capacity = _SectionDTO.Capacity;
-                itm.Location = _SectionDTO.Location;
-                itm.StartDateTime = _SectionDTO.StartDateTime;
+                itm.SchoolId = _GradeTypeWeightDTO.SchoolId;
+                itm.SectionId = _GradeTypeWeightDTO.SectionId;
+                itm.GradeTypeCode = _GradeTypeWeightDTO.GradeTypeCode;
+                itm.NumberPerSection = _GradeTypeWeightDTO.NumberPerSection;
+                itm.PercentOfFinalGrade = _GradeTypeWeightDTO.PercentOfFinalGrade;
+                itm.DropLowest = _GradeTypeWeightDTO.DropLowest;
 
-                _context.Sections.Update(itm);
+                _context.GradeTypeWeights.Update(itm);
                 await _context.SaveChangesAsync();
                 await _context.Database.CommitTransactionAsync();
 
@@ -214,6 +211,16 @@ namespace OCTOBER.Server.Controllers.UD
                 //List<OraError> DBErrors = ErrorHandling.TryDecodeDbUpdateException(Dex, _OraTranslateMsgs);
                 return StatusCode(StatusCodes.Status417ExpectationFailed, "An Error has occurred");
             }
+        }
+
+        //Implements with the arguments at the top
+        public Task<IActionResult> Delete(int KeyVal)
+        {
+            throw new NotImplementedException();
+        }
+        public Task<IActionResult> Get(int KeyVal)
+        {
+            throw new NotImplementedException();
         }
 
     }
